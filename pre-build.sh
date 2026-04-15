@@ -1,26 +1,34 @@
 #!/bin/bash
+# Переходим в корень сборки
 cd padavan-ng/trunk
 mkdir -p user/nfqws
 
-echo "Скачиваем бинарник через зеркало jsDelivr (CDN)..."
+echo "Пытаемся скачать nfqws автоматически через GitHub CLI..."
 
-# Зеркало jsDelivr для того же самого файла nfqws
-URL="https://jsdelivr.net"
+# 1. Используем встроенную утилиту gh для получения ссылки на последний релиз
+# Это работает надежнее, чем обычный curl
+LATEST_TAG=$(gh release view --repo bol-van/zapret --json tagName --template '{{.tagName}}')
+echo "Detected version: $LATEST_TAG"
 
-# Пытаемся скачать
-curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL" || wget --no-check-certificate -O user/nfqws/nfqws "$URL"
+# 2. Скачиваем файл. Если curl упадет, пробуем скачать через gh release download
+gh release download "$LATEST_TAG" --repo bol-van/zapret --pattern 'nfqws-mips32r1-softfloat' --output user/nfqws/nfqws
 
-# ПРОВЕРКА: Если файл всё еще не бинарник
+# 3. Если gh не справился (бывает в контейнерах), используем аварийный CDN
+if [ ! -s user/nfqws/nfqws ]; then
+    echo "GH CLI failed, trying direct CDN link..."
+    curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "https://github.com{LATEST_TAG}/nfqws-mips32r1-softfloat"
+fi
+
+# 4. Проверка на ELF (бинарность)
 if ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
-    echo "ОШИБКА: CDN тоже не отдал файл. Содержимое того, что пришло:"
-    cat user/nfqws/nfqws | head -n 5
+    echo "КРИТИЧЕСКАЯ ОШИБКА: Бинарный файл не получен."
     exit 1
 fi
 
-echo "Успех! Бинарник nfqws на месте (скачан через CDN)."
 chmod +x user/nfqws/nfqws
+echo "Success! nfqws $LATEST_TAG ready."
 
-# Создаем Makefile
+# 5. Makefile
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
