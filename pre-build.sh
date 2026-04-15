@@ -9,11 +9,10 @@ echo "Cleaning and downloading zapret2..."
 rm -rf *
 git clone --depth=1 https://github.com/bol-van/zapret2.git .
 
-# 3. Создаем "умный" Makefile, который видит библиотеки Padavan
+# 3. Создаем Makefile с отключением libcap и исправлением путей
 echo "Creating optimized Makefile..."
 cat << 'EOF' > Makefile
 TGT1 := nfqws2
-# Список исходников из папок nfq2 и nfq2/crypto
 SRC1 := nfq2/nfqws.c nfq2/helpers.c nfq2/sec.c nfq2/conntrack.c nfq2/protocol.c \
         nfq2/params.c nfq2/desync.c nfq2/hostlist.c nfq2/darkmagic.c nfq2/filter.c \
         nfq2/ipset.c nfq2/packet_queue.c nfq2/pools.c nfq2/random.c nfq2/timer.c \
@@ -22,8 +21,8 @@ SRC1 := nfq2/nfqws.c nfq2/helpers.c nfq2/sec.c nfq2/conntrack.c nfq2/protocol.c 
         nfq2/crypto/gcm.c nfq2/crypto/hkdf.c nfq2/crypto/hmac.c \
         nfq2/crypto/sha224-256.c nfq2/crypto/usha.c
 
-# Добавляем пути к заголовочным файлам библиотек из Toolchain/Staging
-CFLAGS += -I$(STAGEDIR)/include -D_GNU_SOURCE
+# ДОБАВЛЕНО: -DNO_CAPABILITIES отключает зависимость от sys/capability.h
+CFLAGS += -I$(STAGEDIR)/include -D_GNU_SOURCE -DNO_CAPABILITIES
 LDFLAGS += -L$(STAGEDIR)/lib
 
 all: $(TGT1)
@@ -38,6 +37,7 @@ romfs:
 	$(ROMFSINST) /usr/bin/$(TGT1)
 	$(STRIP) /usr/bin/$(TGT1)
 EOF
+
 
 # 4. Возвращаемся в корень репозитория
 cd ../../../
