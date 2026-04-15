@@ -2,34 +2,32 @@
 cd padavan-ng/trunk
 mkdir -p user/nfqws
 
-echo "Скачиваем архив zapret2 v0.9.5..."
-
-# Твоя ссылка на архив
-URL="https://github.com/bol-van/zapret2/releases/download/v0.9.5/zapret2-v0.9.5.zip"
-
-# Качаем архив (флаг -L обязателен для редиректов GitHub)
+# 1. Скачиваем архив zapret2 v0.9.5
+URL="https://github.com"
 curl -L -f -o zapret2.zip "$URL"
 
-# Распаковываем только nfqws для твоей архитектуры (mips32r1-softfloat)
-# В архиве zapret2 структура папок может быть другой, поэтому достаем файл напрямую
-unzip -j zapret2.zip "*/nfqws-mips32r1-softfloat" -d user/nfqws/
+# 2. Распаковываем только nfqws2 для архитектуры mipsel
+# В ZIP он лежит по пути: zapret2-v0.9.5/binaries/linux-mipsel/nfqws2
+unzip -j zapret2.zip "zapret2-v0.9.5/binaries/linux-mipsel/nfqws2" -d user/nfqws/
 
-# Переименовываем в короткое название для системы
-mv user/nfqws/nfqws-mips32r1-softfloat user/nfqws/nfqws
+# 3. Переименовываем для удобства в nfqws и даем права
+mv user/nfqws/nfqws2 user/nfqws/nfqws
 chmod +x user/nfqws/nfqws
 
-# Проверка: если файл пустой или не бинарник - стопаем сборку
+# 4. Проверка на ELF (чтобы не прошить пустоту)
 if ! head -c 4 user/nfqws/nfqws | grep -q "ELF"; then
-    echo "ОШИБКА: Бинарник не извлечен или поврежден!"
+    echo "ОШИБКА: Бинарник linux-mipsel/nfqws2 не найден!"
     exit 1
 fi
 
-echo "Успех! Zapret2 (nfqws) готов к вшиванию."
+rm -f zapret2.zip
+echo "Успех! nfqws2 (mipsel) извлечен и готов."
 
-# Создаем Makefile, чтобы прошивка подхватила файл
+# 5. Генерируем Makefile
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
 romfs:
 	\$(ROMFSINST) -p +x \$(ROOTDIR)/user/nfqws/nfqws /usr/bin/nfqws
 EOF
+
