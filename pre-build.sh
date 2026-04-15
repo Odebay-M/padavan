@@ -3,33 +3,32 @@ cd padavan-ng/trunk
 
 mkdir -p user/nfqws
 
-# Ссылка на зеркало (официальный репозиторий bol-van, но через jsDelivr или прямой raw)
-# Попробуем скачать через ://githubusercontent.com - он лояльнее к curl
-URL="https://://githubusercontent.com/bol-van/zapret/master/binaries/mips/nfqws-mips32r1-softfloat"
+# Правильная ссылка на raw-файл
+URL="https://githubusercontent.com"
 
-echo "Downloading nfqws from $URL..."
+echo "Attempting to download nfqws..."
 
-# Качаем с флагами, имитирующими браузер
-curl -k -A "Mozilla/5.0" -L -sS -o user/nfqws/nfqws "$URL"
+# Пробуем скачать через curl с правильными заголовками
+curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL" || wget --no-check-certificate -U "Mozilla/5.0" -O user/nfqws/nfqws "$URL"
 
-# ПРОВЕРКА №1: Если файл всё еще пустой, пробуем запасную ссылку (релиз v0.9.5)
-if ! head -c 4 user/nfqws/nfqws | grep -q "ELF"; then
-    echo "First link failed, trying backup..."
-    URL_BACKUP="https://github.com"
-    curl -k -A "Mozilla/5.0" -L -sS -o user/nfqws/nfqws "$URL_BACKUP"
+# Проверка: если файл не ELF бинарник, пробуем прямую ссылку на релиз
+if ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
+    echo "Primary link failed or not a binary. Trying Release link..."
+    URL_REL="https://github.com"
+    curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL_REL"
 fi
 
-# ФИНАЛЬНАЯ ПРОВЕРКА: Если и это не помогло - выводим что скачалось для отладки
-if ! head -c 4 user/nfqws/nfqws | grep -q "ELF"; then
-    echo "ОШИБКА: Снова скачался текст! Содержимое начала файла:"
-    head -n 5 user/nfqws/nfqws
+# Финальная проверка
+if [ ! -f user/nfqws/nfqws ] || ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
+    echo "ОШИБКА: Бинарный файл не скачан. Содержимое того, что пришло:"
+    cat user/nfqws/nfqws | head -n 5
     exit 1
 fi
 
-echo "Success! Binary file (ELF) downloaded."
+echo "Success! ELF binary detected."
 chmod +x user/nfqws/nfqws
 
-# Makefile
+# Создаем Makefile, который просто копирует файл
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
