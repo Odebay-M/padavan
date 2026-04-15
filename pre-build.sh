@@ -1,34 +1,32 @@
 #!/bin/bash
-# Переходим в корень сборки
 cd padavan-ng/trunk
 mkdir -p user/nfqws
 
-echo "Пытаемся скачать nfqws автоматически через GitHub CLI..."
+echo "Скачиваем архив zapret2 v0.9.5..."
 
-# 1. Используем встроенную утилиту gh для получения ссылки на последний релиз
-# Это работает надежнее, чем обычный curl
-LATEST_TAG=$(gh release view --repo bol-van/zapret --json tagName --template '{{.tagName}}')
-echo "Detected version: $LATEST_TAG"
+# Твоя ссылка на архив
+URL="https://github.com/bol-van/zapret2/releases/download/v0.9.5/zapret2-v0.9.5.zip"
 
-# 2. Скачиваем файл. Если curl упадет, пробуем скачать через gh release download
-gh release download "$LATEST_TAG" --repo bol-van/zapret --pattern 'nfqws-mips32r1-softfloat' --output user/nfqws/nfqws
+# Качаем архив (флаг -L обязателен для редиректов GitHub)
+curl -L -f -o zapret2.zip "$URL"
 
-# 3. Если gh не справился (бывает в контейнерах), используем аварийный CDN
-if [ ! -s user/nfqws/nfqws ]; then
-    echo "GH CLI failed, trying direct CDN link..."
-    curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "https://github.com{LATEST_TAG}/nfqws-mips32r1-softfloat"
-fi
+# Распаковываем только nfqws для твоей архитектуры (mips32r1-softfloat)
+# В архиве zapret2 структура папок может быть другой, поэтому достаем файл напрямую
+unzip -j zapret2.zip "*/nfqws-mips32r1-softfloat" -d user/nfqws/
 
-# 4. Проверка на ELF (бинарность)
-if ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
-    echo "КРИТИЧЕСКАЯ ОШИБКА: Бинарный файл не получен."
+# Переименовываем в короткое название для системы
+mv user/nfqws/nfqws-mips32r1-softfloat user/nfqws/nfqws
+chmod +x user/nfqws/nfqws
+
+# Проверка: если файл пустой или не бинарник - стопаем сборку
+if ! head -c 4 user/nfqws/nfqws | grep -q "ELF"; then
+    echo "ОШИБКА: Бинарник не извлечен или поврежден!"
     exit 1
 fi
 
-chmod +x user/nfqws/nfqws
-echo "Success! nfqws $LATEST_TAG ready."
+echo "Успех! Zapret2 (nfqws) готов к вшиванию."
 
-# 5. Makefile
+# Создаем Makefile, чтобы прошивка подхватила файл
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
