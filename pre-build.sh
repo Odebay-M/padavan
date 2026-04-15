@@ -5,7 +5,7 @@ mkdir -p user/nfqws
 echo "Определяем последнюю версию Zapret 2..."
 
 # 1. Получаем тег последнего релиза (например, v0.9.5) через API GitHub
-LATEST_TAG=$(curl -s https://github.com/bol-van/zapret2 | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+LATEST_TAG=$(curl -s https://github.com/bol-van/zapret2/releases/tag | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
 if [ -z "$LATEST_TAG" ]; then
     echo "ОШИБКА: Не удалось получить версию. Проверьте сеть."
@@ -15,7 +15,7 @@ fi
 echo "Найдена версия: $LATEST_TAG"
 
 # 2. Формируем ПРАВИЛЬНУЮ ссылку на скачивание архива
-URL="https://github.com/bol-van/zapret2{LATEST_TAG}/zapret2-${LATEST_TAG}.zip"
+URL="https://github.com/bol-van/zapret2/releases/tag-${LATEST_TAG}.zip"
 
 echo "Загружаем архив: $URL"
 
