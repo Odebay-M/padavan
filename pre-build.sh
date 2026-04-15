@@ -1,49 +1,49 @@
+
 #!/bin/bash
 
-# 1. Заходим в папку nfqws внутри дерева исходников
-# В вашем воркфлоу папка называется padavan-ng
-cd padavan-ng/trunk/user/nfqws
+# 1. Заходим в папку nfqws внутри дерева Padavan-ng
+cd padavan-ng/trunk/user/nfqws || exit 1
 
-# 2. Очищаем всё старое
+# 2. Очищаем старое и качаем zapret2
 rm -rf *
+git clone --depth=1 https://github.com/bol-van/zapret2.git .
 
-# 3. Клонируем zapret2 правильно (с точкой в конце)
-git clone --depth=1 https://github.com/bol-van/zapret2 .
-
-# 4. Создаем Makefile (исправлены пути к объектным файлам)
+# 3. Создаем Makefile с учетом новой вложенности (nfq2 и nfq2/crypto)
 cat << 'EOF' > Makefile
 TGT1 := nfqws2
-SRC1 := nfqws/nfqws.c nfqws/helpers.c nfqws/sec.c nfqws/conntrack.c nfqws/protocol.c nfqws/params.c nfqws/packets.c nfqws/desync.c nfqws/hostlist.c nfqws/proxy.c
+# Список всех необходимых исходников nfqws2 (включая крипто)
+SRC1 := nfq2/nfqws.c nfq2/helpers.c nfq2/sec.c nfq2/conntrack.c nfq2/protocol.c \
+        nfq2/params.c nfq2/desync.c nfq2/hostlist.c nfq2/darkmagic.c nfq2/filter.c \
+        nfq2/ipset.c nfq2/packet_queue.c nfq2/pools.c nfq2/random.c nfq2/timer.c \
+        nfq2/checksum.c nfq2/gzip.c \
+        nfq2/crypto/aes.c nfq2/crypto/aes-ctr.c nfq2/crypto/aes-gcm.c \
+        nfq2/crypto/gcm.c nfq2/crypto/hkdf.c nfq2/crypto/hmac.c \
+        nfq2/crypto/sha224-256.c nfq2/crypto/usha.c
 
-TGT2 := tpws
-SRC2 := tpws/tpws.c tpws/helpers.c tpws/params.c tpws/protocol.c tpws/sec.c tpws/hostlist.c
-
-all: $(TGT1) $(TGT2)
+all: $(TGT1)
 
 $(TGT1): $(SRC1)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lnetfilter_queue -lnfnetlink -lpthread -lz
 
-$(TGT2): $(SRC2)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lpthread -lz
-
 clean:
-	rm -f $(TGT1) $(TGT2)
+	rm -f $(TGT1)
 
 romfs:
 	$(ROMFSINST) /usr/bin/$(TGT1)
-	$(ROMFSINST) /usr/bin/$(TGT2)
+	$(STRIP) /usr/bin/$(TGT1)
 EOF
 
-# 5. Возвращаемся в корень репозитория padavan-ng
+# 4. Возвращаемся в корень репозитория
 cd ../../../
 
-# 6. Включаем необходимые опции в .config
-# Используем седы для поиска и замены, если опция уже есть
-sed -i 's/^# CONFIG_FIRMWARE_INCLUDE_NFQWS is not set/CONFIG_FIRMWARE_INCLUDE_NFQWS=y/' trunk/.config
-grep -q "CONFIG_FIRMWARE_INCLUDE_LIBNETFILTER_QUEUE=y" trunk/.config || echo "CONFIG_FIRMWARE_INCLUDE_LIBNETFILTER_QUEUE=y" >> trunk/.config
-grep -q "CONFIG_FIRMWARE_INCLUDE_ZLIB=y" trunk/.config || echo "CONFIG_FIRMWARE_INCLUDE_ZLIB=y" >> trunk/.config
+# 5. Принудительно включаем зависимости в build.config
+# Это гарантирует сборку библиотек перед компиляцией нашего Makefile
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_NFQWS=n/CONFIG_FIRMWARE_INCLUDE_NFQWS=y/' build.config
+for opt in CONFIG_FIRMWARE_INCLUDE_LIBNETFILTER_QUEUE CONFIG_FIRMWARE_INCLUDE_LIBNFNETLINK CONFIG_FIRMWARE_INCLUDE_ZLIB; do
+  grep -q "$opt=y" build.config || echo "$opt=y" >> build.config
+done
 
-# 7. Глобальная замена вызова бинарника в скриптах прошивки
-find trunk/user/scripts -type f -name "*.sh" -exec sed -i 's/nfqws/nfqws2/g' {} +
+# 6. Патчим системные скрипты Padavan (меняем nfqws -> nfqws2)
+find padavan-ng/trunk/user/scripts -type f -name "*.sh" -exec sed -i 's/nfqws/nfqws2/g' {} +
 
-echo "Pre-build stage for zapret2 finished successfully."
+echo "Pre-build for Mi3 (zapret2) integrated successfully."
