@@ -1,34 +1,26 @@
 #!/bin/bash
 cd padavan-ng/trunk
-
 mkdir -p user/nfqws
 
-# Правильная ссылка на raw-файл
-URL="https://githubusercontent.com"
+echo "Скачиваем полный архив zapret, чтобы достать nfqws..."
 
-echo "Attempting to download nfqws..."
+# Качаем официальный релиз (архив mips32), так GitHub отдает файлы лучше
+curl -L -f -o zapret.tar.gz https://github.com
 
-# Пробуем скачать через curl с правильными заголовками
-curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL" || wget --no-check-certificate -U "Mozilla/5.0" -O user/nfqws/nfqws "$URL"
+# Распаковываем только один нужный нам файл
+tar -xzvf zapret.tar.gz zapret-v0.9.5/binaries/mips/nfqws-mips32r1-softfloat --strip-components=3
+mv nfqws-mips32r1-softfloat user/nfqws/nfqws
 
-# Проверка: если файл не ELF бинарник, пробуем прямую ссылку на релиз
-if ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
-    echo "Primary link failed or not a binary. Trying Release link..."
-    URL_REL="https://github.com"
-    curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL_REL"
-fi
-
-# Финальная проверка
-if [ ! -f user/nfqws/nfqws ] || ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
-    echo "ОШИБКА: Бинарный файл не скачан. Содержимое того, что пришло:"
-    cat user/nfqws/nfqws | head -n 5
+# Финальная проверка на работоспособность бинарника
+if [ ! -s user/nfqws/nfqws ] || ! head -c 4 user/nfqws/nfqws | grep -q "ELF"; then
+    echo "ОШИБКА: Бинарник не извлечен!"
     exit 1
 fi
 
-echo "Success! ELF binary detected."
+echo "Успех! Бинарник nfqws v0.9.5 готов."
 chmod +x user/nfqws/nfqws
 
-# Создаем Makefile, который просто копирует файл
+# Создаем Makefile
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
