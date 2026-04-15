@@ -2,34 +2,31 @@
 cd padavan-ng/trunk
 mkdir -p user/nfqws
 
-echo "Скачиваем полный архив релиза v0.9.5..."
+echo "Скачиваем бинарник с альтернативного зеркала..."
 
-# ПРАВИЛЬНАЯ ССЫЛКА НА АРХИВ
-URL="https://github.com"
+# Используем raw-ссылку напрямую (она стабильнее)
+URL="https://githubusercontent.com"
 
-curl -L -f -o zapret.tar.gz "$URL"
+# Качаем с флагами, которые заставляют сервер отдать файл
+curl -k -L -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL"
 
-# Проверка: скачался ли файл вообще
-if [ ! -f zapret.tar.gz ]; then
-    echo "ОШИБКА: Файл zapret.tar.gz не найден!"
+# ПРОВЕРКА: Если файл всё еще не бинарник, пробуем скачать через wget
+if ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
+    echo "Curl failed, trying wget..."
+    wget --no-check-certificate -O user/nfqws/nfqws "$URL"
+fi
+
+# ФИНАЛЬНАЯ ПРОВЕРКА
+if ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
+    echo "ОШИБКА: Опять скачался текст. Содержимое:"
+    cat user/nfqws/nfqws | head -n 5
     exit 1
 fi
 
-# Распаковываем бинарник
-tar -xzvf zapret.tar.gz --strip-components=3 zapret-v0.9.5/binaries/mips/nfqws-mips32r1-softfloat
-
-# Проверяем, появилось ли извлеченное приложение
-if [ ! -f nfqws-mips32r1-softfloat ]; then
-    echo "ОШИБКА: Не удалось извлечь бинарник из архива!"
-    exit 1
-fi
-
-mv nfqws-mips32r1-softfloat user/nfqws/nfqws
+echo "Успех! Бинарник nfqws на месте."
 chmod +x user/nfqws/nfqws
 
-echo "Успех! Бинарник nfqws v0.9.5 готов."
-
-# Создаем Makefile для интеграции в прошивку
+# Создаем Makefile
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
