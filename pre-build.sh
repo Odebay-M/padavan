@@ -1,27 +1,22 @@
 #!/bin/bash
 cd padavan-ng/trunk
 
-# 1. Создаем папку
+# 1. Подготовка папки
 mkdir -p user/nfqws
 
-# 2. Получаем версию последнего релиза через API GitHub
-LATEST_TAG=$(curl -s https://github.com | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+# 2. Скачивание версии 0.9.5 по прямой ссылке
+# Добавляем флаги для надежности: -L (редирект), -f (ошибка при 404), -S (показывать ошибки)
+curl -L -f -S -o user/nfqws/nfqws https://github.com
 
-echo "Found latest version: $LATEST_TAG"
-
-# 3. Скачиваем бинарник именно этой версии
-# Архитектура mips32r1-softfloat для Xiaomi Mi 3
-curl -A "Mozilla/5.0" -L -f -o user/nfqws/nfqws "https://github.com{LATEST_TAG}/nfqws-mips32r1-softfloat"
-
-# 4. Проверка на пустоту
+# 3. ПРОВЕРКА: Если файл пустой — сборка упадет с понятной ошибкой
 if [ ! -s user/nfqws/nfqws ]; then
-    echo "CRITICAL ERROR: Download failed!"
+    echo "КРИТИЧЕСКАЯ ОШИБКА: Файл nfqws не скачался!"
     exit 1
 fi
 
 chmod +x user/nfqws/nfqws
 
-# 5. Makefile для сборки
+# 4. Makefile для прошивки
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
