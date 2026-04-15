@@ -2,32 +2,34 @@
 cd padavan-ng/trunk
 mkdir -p user/nfqws
 
-# 1. Скачиваем архив zapret2 v0.9.5
-URL="https://github.com"
-curl -L -f -o zapret2.zip "$URL"
+echo "Скачиваем бинарник nfqws2 через зеркало..."
 
-# 2. Распаковываем только nfqws2 для архитектуры mipsel
-# В ZIP он лежит по пути: zapret2-v0.9.5/binaries/linux-mipsel/nfqws2
-unzip -j zapret2.zip "zapret2-v0.9.5/binaries/linux-mipsel/nfqws2" -d user/nfqws/
+# Прямая ссылка на бинарник внутри релиза через CDN jsDelivr
+URL="https://jsdelivr.net"
 
-# 3. Переименовываем для удобства в nfqws и даем права
-mv user/nfqws/nfqws2 user/nfqws/nfqws
-chmod +x user/nfqws/nfqws
+# Качаем с проверкой
+curl -L -k -f -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL"
 
-# 4. Проверка на ELF (чтобы не прошить пустоту)
-if ! head -c 4 user/nfqws/nfqws | grep -q "ELF"; then
-    echo "ОШИБКА: Бинарник linux-mipsel/nfqws2 не найден!"
+# Проверка на ELF (бинарный формат)
+if ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
+    echo "ОШИБКА: Файл не скачался или он не бинарный. Пробуем резервную raw-ссылку..."
+    URL_RAW="https://githubusercontent.com"
+    curl -L -k -f -A "Mozilla/5.0" -o user/nfqws/nfqws "$URL_RAW"
+fi
+
+# Финальный контроль
+if [ ! -s user/nfqws/nfqws ] || ! head -c 4 user/nfqws/nfqws 2>/dev/null | grep -q "ELF"; then
+    echo "КРИТИЧЕСКАЯ ОШИБКА: Бинарник nfqws2 не получен!"
     exit 1
 fi
 
-rm -f zapret2.zip
-echo "Успех! nfqws2 (mipsel) извлечен и готов."
+chmod +x user/nfqws/nfqws
+echo "Успех! Бинарник nfqws2 (mipsel) готов."
 
-# 5. Генерируем Makefile
+# Создаем Makefile
 cat <<EOF > user/nfqws/Makefile
 all:
 clean:
 romfs:
 	\$(ROMFSINST) -p +x \$(ROOTDIR)/user/nfqws/nfqws /usr/bin/nfqws
 EOF
-
