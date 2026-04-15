@@ -1,25 +1,18 @@
 #!/bin/bash
 
-# Переходим в папку с исходниками
+# Переходим в директорию, куда скачиваются исходники
 cd padavan-ng/trunk
 
-# 1. Включаем критически важные модули (IPSET и HTTPS)
-sed -i 's/CONFIG_FIRMWARE_INCLUDE_IPSET=n/CONFIG_FIRMWARE_INCLUDE_IPSET=y/' .config
-sed -i 's/CONFIG_FIRMWARE_INCLUDE_HTTPS=n/CONFIG_FIRMWARE_INCLUDE_HTTPS=y/' .config
+# Удаляем старый бинарник, если он там есть, и качаем zapret2 (nfqws)
+# Для Mi Router 3 (MT7620) строго mips32r1-softfloat
+mkdir -p user/nfqws
+curl -L -o user/nfqws/nfqws https://github.com
 
-# 2. Создаем временную папку для скачивания бинарников zapret2
-mkdir -p user/zapret2
+# Даем права на выполнение
+chmod +x user/nfqws/nfqws
 
-# 3. Скачиваем актуальный бинарник nfqws из репозитория zapret
-# Для Mi Router 3 (MT7620) берем mips32r1-softfloat
-curl -L -o user/zapret2/nfqws https://github.com
-
-# Делаем его исполняемым
-chmod +x user/zapret2/nfqws
-
-# 4. Прописываем копирование бинарника в систему (/usr/bin/nfqws)
-# Используем Makefile, чтобы файл попал в итоговый образ прошивки
-sed -i '/romfs:/a \	$(ROMFSINST) -p +x $(ROOTDIR)/user/zapret2/nfqws /usr/bin/nfqws' user/Makefile
-
-# 5. Опционально: Добавляем скрипт-помощник (tpws, если нужен, качается аналогично)
-# Для работы zapret2 обычно достаточно одного nfqws
+# Отключаем тяжелые пакеты прямо здесь (на случай если забыли в build.config),
+# чтобы прошивка точно влезла в 14МБ
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_ARIA=y/CONFIG_FIRMWARE_INCLUDE_ARIA=n/' .config
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_TRANSMISSION=y/CONFIG_FIRMWARE_INCLUDE_TRANSMISSION=n/' .config
+sed -i 's/CONFIG_FIRMWARE_INCLUDE_TOR=y/CONFIG_FIRMWARE_INCLUDE_TOR=n/' .config
